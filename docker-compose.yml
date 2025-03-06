@@ -1,0 +1,59 @@
+version: "3.8"
+
+services:
+  custom_postgres:              # Define the PostgreSQL service
+    image: postgres:14          # Use PostgreSQL version 14
+    container_name: postgres-db 
+    environment:                # Set environment variables for the DB
+      POSTGRES_DB: news_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:                    # Mount volumes for DB data and init script
+      - ./DB/postgres_data:/var/lib/postgresql/data
+      - ./DB/init_db.sh:/docker-entrypoint-initdb.d/init_db.sh
+    ports:                      # Map host port to container port
+      - "5432:5432"
+    networks:                   # Connect to the defined network
+      - feed_network
+    restart: on-failure:3       # Restart up to 3 times after failure
+    healthcheck:                # Check DB health using pg_isready
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 7m              
+      retries: 3                
+      timeout: 10s              
+      start_period: 5s          
+    command: >                  # Ensure init script has correct permissions and run Postgres
+      bash -c "chmod +x /docker-entrypoint-initdb.d/init_db.sh &&
+      docker-entrypoint.sh postgres"
+
+  feed_collector:               # Define the feed collector service
+    build:                      # Build from custom Dockerfile
+      context: ./RSS            # path to the folder with Dockerfile
+      dockerfile: dockerfile.RssFeed # custom Dockerfile name
+    container_name: feed-collector
+    environment:                # Environment variables for DB and feed
+      POSTGRES_DB: news_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_HOST: custom_postgres   
+      POSTGRES_PORT: 5432
+      RSS_FEED_URL: https://www.thehindu.com/feeder/default.rss
+      TITLE_PATH: title
+      TIMESTAMP_PATH: published
+      WEBLINK_PATH: link
+      IMAGE_PATH: media_content
+      IMAGE_URL_PATH: url
+      SUMMARY_PATH: summary
+      POLL_INTERVAL: 600
+    depends_on:                 # Ensures DB starts before feed collector
+      - custom_postgres
+    networks:                   # Connect to the defined network
+      - feed_network
+    restart: on-failure:3       # Restart up to 3 times after failure
+
+networks:
+  feed_network:                 # Define the custom network
+    driver: bridge
+
+volumes:                        # Define volumes for persistent storage
+  postgres_data:

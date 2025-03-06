@@ -1,0 +1,29 @@
+# Use official lightweight Python image
+FROM python:3.9-slim
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy requirements for dependencies
+COPY requirements.txt requirements.txt
+
+# Install dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the Python script into the container
+COPY feed_collector.py feed_collector.py
+
+# Expose ports 
+EXPOSE 8000
+
+# Set environment variables (optional, better for testing)
+ENV POSTGRES_DB=news_db \
+    POSTGRES_USER=postgres \
+    POSTGRES_PASSWORD=postgres \
+    POSTGRES_HOST=localhost \
+    POSTGRES_PORT=5432 \
+    RSS_FEED_URL=https://www.thehindu.com/feeder/default.rss \
+    POLL_INTERVAL=600
+
+# Command to run the Python script
+CMD ["python", "feed_collector.py"]

@@ -1,0 +1,14 @@
+# Use the official PostgreSQL 14 image as the base image
+FROM postgres:14
+
+# Update the package list to ensure the latest package information 
+RUN apt-get update
+
+# Copy the initialization script to the container's init directory
+COPY init_db.sh /docker-entrypoint-initdb.d/init_db.sh
+
+# Make the init script is executable
+RUN chmod +x /docker-entrypoint-initdb.d/init_db.sh
+
+# Expose port 5432 to allow external connections to PostgreSQL
+EXPOSE 5432
